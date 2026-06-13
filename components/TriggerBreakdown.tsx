@@ -1,8 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View, Dimensions, DimensionValue } from 'react-native';
+import { AppData, getCravingsForSubstance, getTriggerBreakdown } from '../state/AppState';
 
 interface TriggerBreakdownProps {
   substance: 'weed' | 'nicotine';
+  data: AppData;
 }
 
 interface TriggerItem {
@@ -11,52 +13,33 @@ interface TriggerItem {
   percentage: number;
 }
 
-export default function TriggerBreakdown({ substance }: TriggerBreakdownProps) {
+export default function TriggerBreakdown({ substance, data }: TriggerBreakdownProps) {
   const isWeed = substance === 'weed';
   const accentColor = isWeed ? '#34C759' : '#FF9F0A';
-
-  // Comprehensive analytics mockup data based on historical MVP trends
-  const analyticsData = {
-    weed: {
-      totalCravings: 24,
-      dangerZoneTime: 'Late Night (10 PM – 1 AM)',
-      primaryState: 'Boredom',
-      triggers: [
-        { name: 'Boredom / Idle Time', count: 12, percentage: 50 },
-        { name: 'Insomnia / Sleep Routine', count: 6, percentage: 25 },
-        { name: 'Stress / Overwhelm', count: 4, percentage: 17 },
-        { name: 'Social Group Setting', count: 2, percentage: 8 },
-      ] as TriggerItem[],
-    },
-    nicotine: {
-      totalCravings: 42,
-      dangerZoneTime: 'Early Morning (8 AM – 10 AM)',
-      primaryState: 'Work Stress',
-      triggers: [
-        { name: 'Work Stress / Tight Deadlines', count: 18, percentage: 43 },
-        { name: 'Post-Meal Routine Habit', count: 14, percentage: 33 },
-        { name: 'Social Commute / Driving', count: 7, percentage: 17 },
-        { name: 'Boredom', count: 3, percentage: 7 },
-      ] as TriggerItem[],
-    },
-  };
-
-  const currentData = isWeed ? analyticsData.weed : analyticsData.nicotine;
+  const triggers = getTriggerBreakdown(data, substance) as TriggerItem[];
+  const totalCravings = getCravingsForSubstance(data, substance).length;
+  const primaryState = triggers[0]?.name || 'No pattern yet';
+  const dangerZoneTime = getCravingsForSubstance(data, substance)[0]
+    ? new Date(getCravingsForSubstance(data, substance)[0].logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : 'Log a craving to detect timing';
 
   return (
     <View style={styles.chartCard}>
       {/* Component Summary Header */}
       <View style={styles.headerRow}>
         <Text style={styles.cardTitle}>Craving Triggers</Text>
-        <Text style={styles.totalText}>{currentData.totalCravings} logged instances</Text>
+        <Text style={styles.totalText}>{totalCravings} logged instances</Text>
       </View>
 
-      {/* Ranked Horizontal Distribution Bars */}
       <View style={styles.chartContainer}>
-        {currentData.triggers.map((item, index) => (
+        {triggers.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No cravings logged yet</Text>
+            <Text style={styles.emptyStateText}>Use SOS Craving on the dashboard and this chart will build itself.</Text>
+          </View>
+        ) : triggers.map((item, index) => (
           <View key={index} style={styles.rowItem}>
-            
-            {/* Label Line Description */}
+
             <View style={styles.labelRow}>
               <Text style={styles.triggerName}>{item.name}</Text>
               <Text style={styles.triggerValue}>
@@ -64,7 +47,6 @@ export default function TriggerBreakdown({ substance }: TriggerBreakdownProps) {
               </Text>
             </View>
 
-            {/* Custom Track Background */}
             <View style={styles.trackBackground}>
               <View 
                 style={[
@@ -81,13 +63,12 @@ export default function TriggerBreakdown({ substance }: TriggerBreakdownProps) {
         ))}
       </View>
 
-      {/* Advanced Predictive Behavior Summary Banner */}
       <View style={styles.insightBanner}>
         <Text style={styles.insightHeader}>🧠 BEHAVIORAL PREDICTION</Text>
         <Text style={styles.insightDescription}>
           Your highest relapse risk environment is driven by{' '}
-          <Text style={[styles.highlightText, { color: accentColor }]}>{currentData.primaryState}</Text>{' '}
-          during <Text style={styles.highlightText}>{currentData.dangerZoneTime}</Text>. Plan proactive distractions before this window hits.
+          <Text style={[styles.highlightText, { color: accentColor }]}>{primaryState}</Text>{' '}
+          around <Text style={styles.highlightText}>{dangerZoneTime}</Text>. Keep logging urges to sharpen this prediction.
         </Text>
       </View>
 
@@ -128,6 +109,24 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     gap: 16,
+  },
+  emptyState: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    padding: 16,
+  },
+  emptyStateTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyStateText: {
+    color: '#8E8E93',
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 5,
   },
   rowItem: {
     width: '100%',

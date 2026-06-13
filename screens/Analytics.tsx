@@ -1,35 +1,37 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, Text } from 'react-native';
+import React from 'react';
+import { StyleSheet, ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import SubstanceToggle, { SubstanceType } from '../components/SubstanceToggle';
+import SubstanceToggle from '../components/SubstanceToggle';
 import StreakCalendar from '../components/StreakCalender';
-import TriggerBreakdown from '../components/TriggerBreakdown'; // Import new module
+import TriggerBreakdown from '../components/TriggerBreakdown';
 import RelapseLedger from '../components/RelapseLedger';
+import { SubstanceType, useAppState } from '../state/AppState';
 
-export default function Analytics() {
-  const [currentSubstance, setCurrentSubstance] = useState<SubstanceType>('weed');
+interface AnalyticsProps {
+  currentSubstance: SubstanceType;
+  onSubstanceChange: (substance: SubstanceType) => void;
+}
+
+export default function Analytics({ currentSubstance, onSubstanceChange }: AnalyticsProps) {
+  const { data } = useAppState();
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        
-        {/* Toggle Selector controls the sub-context global layouts state */}
+
         <SubstanceToggle 
           activeSubstance={currentSubstance} 
-          onSubstanceChange={setCurrentSubstance} 
+          onSubstanceChange={onSubstanceChange}
         />
 
-        {/* Section 1: Consistency Grid */}
         <Text style={styles.sectionHeader}>CONSISTENCY MATRIX</Text>
-        <StreakCalendar substance={currentSubstance} />
-        
-        {/* Section 2: Habits Behavioral Analysis Breakdown List */}
-        <Text style={styles.sectionHeader}>BEHAVIORAL DISTRIBUTION</Text>
-        <TriggerBreakdown substance={currentSubstance} />
+        <StreakCalendar substance={currentSubstance} data={data} />
 
-        {/* 3. Non-Shaming Historical Timeline Tracker */}
-        <RelapseLedger substance={currentSubstance} />
-        
+        <Text style={styles.sectionHeader}>BEHAVIORAL DISTRIBUTION</Text>
+        <TriggerBreakdown substance={currentSubstance} data={data} />
+
+        <RelapseLedger substance={currentSubstance} data={data} />
+
       </ScrollView>
     </SafeAreaView>
   );

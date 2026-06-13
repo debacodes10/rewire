@@ -1,32 +1,32 @@
 import React from 'react';
 import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { AppData, DayStatus, getCalendarStatuses } from '../state/AppState';
 
 interface StreakCalendarProps {
   substance: 'weed' | 'nicotine';
+  data: AppData;
 }
 
-export default function StreakCalendar({ substance }: StreakCalendarProps) {
+export default function StreakCalendar({ substance, data }: StreakCalendarProps) {
   const isWeed = substance === 'weed';
   const accentColor = isWeed ? '#34C759' : '#FF9F0A';
+  const currentMonth = new Date();
+  const monthTitle = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const statuses = getCalendarStatuses(data, substance, currentMonth);
+  const cleanCount = Object.values(statuses).filter(status => status === 'clean' || status === 'craving_fought').length;
+  const trackedCount = Object.values(statuses).filter(status => status !== 'none').length;
+  const today = new Date();
 
-  // Mock Calendar Data Matrix for June 2026
-  // Status: 'clean' | 'relapse' | 'craving_fought' | 'none'
-  const mockDayStatus: Record<number, 'clean' | 'relapse' | 'craving_fought' | 'none'> = {
-    1: 'clean', 2: 'clean', 3: 'craving_fought', 4: 'clean', 5: 'clean',
-    6: 'relapse', 7: 'clean', 8: 'clean', 9: 'clean', 10: 'craving_fought',
-    11: 'clean', 12: 'clean', 13: 'clean', // Today is the 13th
-  };
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const startOffset = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
 
-  const daysInMonth = 30; // June has 30 days
-  const startOffset = 1;  // June 1, 2026 starts on a Monday (Offset by 1 block if Sunday is first)
-  
   const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const gridBlocks = Array(startOffset).fill(null).concat(Array.from({ length: daysInMonth }, (_, i) => i + 1));
 
   const getDayStyle = (dayNum: number | null) => {
-    if (!dayNum || !mockDayStatus[dayNum]) return styles.emptyDay;
-    
-    const status = mockDayStatus[dayNum];
+    if (!dayNum) return styles.emptyDay;
+
+    const status: DayStatus = statuses[dayNum] || 'none';
     switch (status) {
       case 'clean':
         return { backgroundColor: isWeed ? 'rgba(52, 199, 89, 0.2)' : 'rgba(255, 159, 10, 0.2)', borderColor: accentColor, borderWidth: 1 };
@@ -41,28 +41,26 @@ export default function StreakCalendar({ substance }: StreakCalendarProps) {
 
   const getDayTextStyle = (dayNum: number | null) => {
     if (!dayNum) return {};
-    if (dayNum === 13) return { color: '#FFFFFF', fontWeight: '800' as const }; // Highlight today
-    if (mockDayStatus[dayNum]) return { color: '#E5E5EA' };
+    if (dayNum === today.getDate() && currentMonth.getMonth() === today.getMonth()) return { color: '#FFFFFF', fontWeight: '800' as const };
+    if (statuses[dayNum] && statuses[dayNum] !== 'none') return { color: '#E5E5EA' };
     return { color: '#48484A' };
   };
 
   return (
     <View style={styles.calendarCard}>
       <View style={styles.headerRow}>
-        <Text style={styles.monthTitle}>June 2026</Text>
+        <Text style={styles.monthTitle}>{monthTitle}</Text>
         <Text style={[styles.summaryBadge, { color: accentColor, backgroundColor: isWeed ? 'rgba(52,199,89,0.08)' : 'rgba(255,159,10,0.08)' }]}>
-          11 / 12 Clean Days
+          {cleanCount} / {trackedCount || 0} Clean Days
         </Text>
       </View>
 
-      {/* Weekday Row Labels */}
       <View style={styles.weekdaysRow}>
         {weekdays.map((day, idx) => (
           <Text key={idx} style={styles.weekdayText}>{day}</Text>
         ))}
       </View>
 
-      {/* Actual Days Grid Matrix */}
       <View style={styles.gridContainer}>
         {gridBlocks.map((day, index) => (
           <View key={index} style={[styles.dayCell, getDayStyle(day)]}>
@@ -71,7 +69,6 @@ export default function StreakCalendar({ substance }: StreakCalendarProps) {
         ))}
       </View>
 
-      {/* Custom Legend Tracker */}
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: isWeed ? 'rgba(52,199,89,0.2)' : 'rgba(255,159,10,0.2)', borderColor: accentColor, borderWidth: 0.5 }]} /><Text style={styles.legendLabel}>Clean</Text></View>
         <View style={styles.legendItem}><View style={[styles.legendDot, { borderColor: '#AF52DE', borderWidth: 1 }]} /><Text style={styles.legendLabel}>Urge Defeated</Text></View>

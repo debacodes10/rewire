@@ -1,47 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, View, Dimensions, FlatList } from 'react-native';
-
-// Explicit type definition for our ledger items mapping to our DB schema
-interface RelapseItem {
-  id: string;
-  substance_type: 'weed' | 'nicotine';
-  relapsed_at: string;
-  streak_lost_seconds: number;
-  notes?: string;
-}
+import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { AppData, getRelapsesForSubstance, RelapseLog } from '../state/AppState';
 
 interface RelapseLedgerProps {
   substance: 'weed' | 'nicotine';
+  data: AppData;
 }
 
-// Mock historical data array for layout testing
-const MOCK_RELAPSE_DATA: RelapseItem[] = [
-  {
-    id: '1',
-    substance_type: 'weed',
-    relapsed_at: '2026-06-10T22:15:00.000Z',
-    streak_lost_seconds: 1209600, // 14 days
-    notes: 'Had an intense wave of boredom late at night after staying up too late watching movies. Need to fix sleep routine.',
-  },
-  {
-    id: '2',
-    substance_type: 'nicotine',
-    relapsed_at: '2026-06-05T08:30:00.000Z',
-    streak_lost_seconds: 259200, // 3 days
-    notes: 'Super stressful morning meeting at work. Automatically reached for my old vape spot before thinking.',
-  },
-  {
-    id: '3',
-    substance_type: 'weed',
-    relapsed_at: '2026-05-20T19:40:00.000Z',
-    streak_lost_seconds: 604800, // 7 days
-    notes: 'Out with old friends who were smoking. Peer pressure got the best of me.',
-  },
-];
-
-export default function RelapseLedger({ substance }: RelapseLedgerProps) {
-  // Filter items to show only logs corresponding to the active toggle tab
-  const filteredData = MOCK_RELAPSE_DATA.filter(item => item.substance_type === substance);
+export default function RelapseLedger({ substance, data }: RelapseLedgerProps) {
+  const filteredData = getRelapsesForSubstance(data, substance);
 
   // Helper to format large seconds into readable block chunks
   const formatLostStreak = (totalSeconds: number) => {
@@ -53,7 +20,7 @@ export default function RelapseLedger({ substance }: RelapseLedgerProps) {
   const isWeed = substance === 'weed';
   const accentColor = isWeed ? '#34C759' : '#FF9F0A'; // Mint Green vs Warm Amber
 
-  const renderItem = ({ item, index }: { item: RelapseItem; index: number }) => {
+  const renderItem = ({ item, index }: { item: RelapseLog; index: number }) => {
     const dateFormatted = new Date(item.relapsed_at).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -84,7 +51,7 @@ export default function RelapseLedger({ substance }: RelapseLedgerProps) {
               "{item.notes}"
             </Text>
           ) : (
-            <Text style={styles.noNotesText}>No reflections recorded for this slip.</Text>
+            <Text style={styles.noNotesText}>{item.trigger ? `Triggered by ${item.trigger}.` : 'No reflections recorded for this slip.'}</Text>
           )}
         </View>
       </View>
@@ -98,7 +65,7 @@ export default function RelapseLedger({ substance }: RelapseLedgerProps) {
       {filteredData.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={[styles.emptyText, { color: accentColor }]}>Flawless History</Text>
-          <Text style={styles.emptySubtext}>No slip-ups logged for this substance yet. Keep guarding the streak!</Text>
+          <Text style={styles.emptySubtext}>No slip-ups logged for this substance yet. Keep guarding the streak.</Text>
         </View>
       ) : (
         <View style={styles.ledgerWrapper}>

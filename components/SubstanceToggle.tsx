@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
-
-export type SubstanceType = 'weed' | 'nicotine';
+import { SubstanceType, useAppState } from '../state/AppState';
 
 interface SubstanceToggleProps {
   activeSubstance: SubstanceType;
@@ -9,6 +8,8 @@ interface SubstanceToggleProps {
 }
 
 export default function SubstanceToggle({ activeSubstance, onSubstanceChange }: SubstanceToggleProps) {
+  const { data } = useAppState();
+
   return (
     <View style={styles.toggleContainer}>
       {/* Weed Tab */}
@@ -16,8 +17,10 @@ export default function SubstanceToggle({ activeSubstance, onSubstanceChange }: 
         activeOpacity={0.8}
         style={[
           styles.tabButton,
+          !data.profiles.weed.enabled && styles.disabledTab,
           activeSubstance === 'weed' && styles.activeWeedTab
         ]}
+        disabled={!data.profiles.weed.enabled}
         onPress={() => onSubstanceChange('weed')}
       >
         <Text style={[
@@ -33,8 +36,10 @@ export default function SubstanceToggle({ activeSubstance, onSubstanceChange }: 
         activeOpacity={0.8}
         style={[
           styles.tabButton,
+          !data.profiles.nicotine.enabled && styles.disabledTab,
           activeSubstance === 'nicotine' && styles.activeNicotineTab
         ]}
+        disabled={!data.profiles.nicotine.enabled}
         onPress={() => onSubstanceChange('nicotine')}
       >
         <Text style={[
@@ -65,6 +70,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
+  },
+  disabledTab: {
+    opacity: 0.35,
   },
   // Active state styling for Weed
   activeWeedTab: {

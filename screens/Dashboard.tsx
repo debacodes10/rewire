@@ -1,30 +1,39 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
+import React from 'react';
+import { StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import HeroCounter from '../components/HeroCounter';
-import SubstanceToggle, { SubstanceType } from '../components/SubstanceToggle';
+import SubstanceToggle from '../components/SubstanceToggle';
 import QuickStats from '../components/QuickStats';
-import PanicButton from '../components/PanicButton'; // Import our new block
+import PanicButton from '../components/PanicButton';
+import { SubstanceType, useAppState } from '../state/AppState';
 
-export default function Dashboard() {
-  const [currentSubstance, setCurrentSubstance] = useState<SubstanceType>('weed');
+interface DashboardProps {
+  currentSubstance: SubstanceType;
+  onSubstanceChange: (substance: SubstanceType) => void;
+}
+
+export default function Dashboard({ currentSubstance, onSubstanceChange }: DashboardProps) {
+  const { data, logCraving, logRelapse } = useAppState();
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Added ScrollView so the expanded dashboard forms remain fluid on smaller iPhones */}
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        
-        <SubstanceToggle 
-          activeSubstance={currentSubstance} 
-          onSubstanceChange={setCurrentSubstance} 
-        />
-        
-        <HeroCounter substance={currentSubstance} />
-        
-        <QuickStats substance={currentSubstance} />
 
-        <PanicButton substance={currentSubstance} />
-        
+        <SubstanceToggle
+          activeSubstance={currentSubstance}
+          onSubstanceChange={onSubstanceChange}
+        />
+
+        <HeroCounter substance={currentSubstance} quitDate={data.profiles[currentSubstance].quitDate} />
+
+        <QuickStats substance={currentSubstance} data={data} />
+
+        <PanicButton
+          substance={currentSubstance}
+          onCravingDefeated={({ intensity, trigger }) => logCraving({ substance_type: currentSubstance, intensity, trigger })}
+          onRelapseLogged={({ intensity, trigger }) => logRelapse({ substance_type: currentSubstance, intensity, trigger, notes: `Slip after ${trigger.toLowerCase()} craving.` })}
+        />
+
       </ScrollView>
     </SafeAreaView>
   );

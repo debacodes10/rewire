@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PanicButtonProps {
   substance: 'weed' | 'nicotine';
+  onCravingDefeated: (payload: { intensity: number; trigger: string }) => void;
+  onRelapseLogged: (payload: { intensity: number; trigger: string }) => void;
 }
 
-export default function PanicButton({ substance }: PanicButtonProps) {
+export default function PanicButton({ substance, onCravingDefeated, onRelapseLogged }: PanicButtonProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedIntensity, setSelectedIntensity] = useState<number | null>(null);
   const [selectedTrigger, setSelectedTrigger] = useState<string | null>(null);
@@ -16,11 +18,26 @@ export default function PanicButton({ substance }: PanicButtonProps) {
 
   const triggers = ['Boredom', 'Stress/Anxiety', 'Social Setting', 'Routine Habit', 'Anger/Frustration'];
 
-  const handleSaveLog = () => {
-    // V2: This will dispatch real data to your Zustand state instance
+  const resetModal = () => {
     setModalVisible(false);
     setSelectedIntensity(null);
     setSelectedTrigger(null);
+  };
+
+  const handleCravingDefeated = () => {
+    if (!selectedIntensity || !selectedTrigger) {
+      return;
+    }
+    onCravingDefeated({ intensity: selectedIntensity, trigger: selectedTrigger });
+    resetModal();
+  };
+
+  const handleRelapseLogged = () => {
+    if (!selectedIntensity || !selectedTrigger) {
+      return;
+    }
+    onRelapseLogged({ intensity: selectedIntensity, trigger: selectedTrigger });
+    resetModal();
   };
 
   return (
@@ -113,7 +130,7 @@ export default function PanicButton({ substance }: PanicButtonProps) {
               </View>
             </View>
 
-            {/* Complete action block submission button */}
+            {/* Complete action block submission buttons */}
             <TouchableOpacity
               activeOpacity={0.8}
               disabled={!selectedIntensity || !selectedTrigger}
@@ -121,7 +138,7 @@ export default function PanicButton({ substance }: PanicButtonProps) {
                 styles.submitButton, 
                 { backgroundColor: (selectedIntensity && selectedTrigger) ? '#FFFFFF' : '#2C2C2E' }
               ]}
-              onPress={handleSaveLog}
+              onPress={handleCravingDefeated}
             >
               <Text style={[
                 styles.submitButtonText, 
@@ -129,6 +146,18 @@ export default function PanicButton({ substance }: PanicButtonProps) {
               ]}>
                 I Beat The Craving
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              disabled={!selectedIntensity || !selectedTrigger}
+              style={[
+                styles.relapseButton,
+                { opacity: (selectedIntensity && selectedTrigger) ? 1 : 0.5 }
+              ]}
+              onPress={handleRelapseLogged}
+            >
+              <Text style={styles.relapseButtonText}>Log A Slip-Up</Text>
             </TouchableOpacity>
 
           </ScrollView>
@@ -299,6 +328,22 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
+    fontWeight: '700',
+  },
+  relapseButton: {
+    width: width - 40,
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(255, 59, 48, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.32)',
+  },
+  relapseButtonText: {
+    color: '#FF453A',
+    fontSize: 15,
     fontWeight: '700',
   },
 });

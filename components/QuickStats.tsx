@@ -1,44 +1,39 @@
 import React from 'react';
 import { StyleSheet, Text, View, Dimensions, DimensionValue } from 'react-native';
+import { AppData, CURRENCY_SYMBOLS, getDailyBudget, getMoneySaved, getStreakSeconds } from '../state/AppState';
 
 interface QuickStatsProps {
   substance: 'weed' | 'nicotine';
+  data: AppData;
 }
 
-export default function QuickStats({ substance }: QuickStatsProps) {
+export default function QuickStats({ substance, data }: QuickStatsProps) {
   const isWeed = substance === 'weed';
-  
-  // comprehensive metrics and historical recovery milestones
-  const statsData = {
-    weed: {
-      moneySaved: '₹1,620',
-      dailyBurnRate: '₹450 / day spent previously',
-      monthlyProjected: '₹13,500 monthly run-rate saved',
-      healthLabel: 'REM Sleep Rebound',
-      healthProgress: '68%',
-      accentColor: '#34C759',
-      insights: [
-        { title: 'Brain Fog Resolution', status: 'In Progress', detail: 'THC metabolites are clearing out from lipid tissues. Focus spikes by 40%.' },
-        { title: 'Neurotransmitter Baseline', status: 'Stabilizing', detail: 'CB1 receptors in your brain are starting to upregulate naturally.' },
-        { title: 'Lung Tar Clearing', status: 'Started', detail: 'Cilia cells in your airway are beginning to break down residual resin particles.' }
-      ]
-    },
-    nicotine: {
-      moneySaved: '₹720',
-      dailyBurnRate: '₹200 / day spent previously',
-      monthlyProjected: '₹6,000 monthly run-rate saved',
-      healthLabel: 'Cardiovascular Oxygenation',
-      healthProgress: '92%',
-      accentColor: '#FF9F0A',
-      insights: [
-        { title: 'Carbon Monoxide Levels', status: 'Normal', detail: 'Blood gas balance is restored. Oxygen absorption capacity is fully optimized.' },
-        { title: 'Cotine Clearance', status: '100% Clean', detail: 'Nicotine derivatives have been completely processed out through the kidneys.' },
-        { title: 'Cardiac Workload Reduction', status: 'Stabilizing', detail: 'Resting pulse rate has decreased by an average of 8-12 beats per minute.' }
-      ]
-    }
-  };
 
-  const currentStats = isWeed ? statsData.weed : statsData.nicotine;
+  const dailyBudget = getDailyBudget(data, substance);
+  const streakDays = Math.floor(getStreakSeconds(data, substance) / 86400);
+  const moneySaved = getMoneySaved(data, substance);
+  const symbol = CURRENCY_SYMBOLS[data.settings.currency];
+  const accentColor = isWeed ? '#34C759' : '#FF9F0A';
+  const healthProgressNumber = Math.min(100, Math.max(5, Math.round((streakDays / (isWeed ? 21 : 14)) * 100)));
+
+  const currentStats = {
+    moneySaved: `${symbol}${moneySaved.toLocaleString()}`,
+    dailyBurnRate: `${symbol}${dailyBudget.toLocaleString()} / day spent previously`,
+    monthlyProjected: `${symbol}${Math.round(dailyBudget * 30).toLocaleString()} monthly run-rate avoided`,
+    healthLabel: isWeed ? 'Stability Momentum' : 'Craving Resistance',
+    healthProgress: `${healthProgressNumber}%`,
+    accentColor,
+    insights: isWeed ? [
+      { title: 'Routine Distance', status: `${streakDays}d`, detail: 'Your current streak is creating separation from old smoking routines and high-risk evening patterns.' },
+      { title: 'Trigger Evidence', status: `${data.craving_logs.filter(log => log.substance_type === substance).length} Logs`, detail: 'Each logged craving improves your view of the situations that need a better replacement behavior.' },
+      { title: 'Savings Pace', status: 'Live', detail: `At your current baseline, every clean week protects roughly ${symbol}${Math.round(dailyBudget * 7).toLocaleString()}.` },
+    ] : [
+      { title: 'Routine Distance', status: `${streakDays}d`, detail: 'Your current streak is weakening automatic nicotine loops around work, commute, and post-meal windows.' },
+      { title: 'Trigger Evidence', status: `${data.craving_logs.filter(log => log.substance_type === substance).length} Logs`, detail: 'Logged urges become a practical map of which cues still need replacement rituals.' },
+      { title: 'Savings Pace', status: 'Live', detail: `At your current baseline, every clean week protects roughly ${symbol}${Math.round(dailyBudget * 7).toLocaleString()}.` },
+    ],
+  };
 
   return (
     <View style={styles.masterContainer}>

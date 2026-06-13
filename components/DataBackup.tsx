@@ -1,75 +1,68 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Alert, Share } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, TouchableOpacity, Alert, Share, TextInput } from 'react-native';
 
 interface DataBackupProps {
-  // Callbacks hooked directly into our local Zustand data persistence store
   onFetchLocalBackupPayload: () => Promise<object>;
   onRestoreLocalBackupPayload: (parsedData: object) => Promise<boolean>;
+  onResetDemoData: () => void;
 }
 
-export default function DataBackup({ onFetchLocalBackupPayload, onRestoreLocalBackupPayload }: DataBackupProps) {
+export default function DataBackup({ onFetchLocalBackupPayload, onRestoreLocalBackupPayload, onResetDemoData }: DataBackupProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [lastExport, setLastExport] = useState('');
+  const [importText, setImportText] = useState('');
 
   const handleExportData = async () => {
     setIsExporting(true);
     try {
-      // 1. Gather all local data arrays from Zustand/MMKV stores
       const databaseSnapshot = await onFetchLocalBackupPayload();
-      
       const payloadString = JSON.stringify(databaseSnapshot, null, 2);
+      setLastExport(payloadString);
       const formattedDate = new Date().toISOString().split('T')[0];
-      
-      // 2. Trigger native OS sharing interface
+
       const result = await Share.share({
         message: payloadString,
-        title: `ClearMind_Backup_${formattedDate}.json`,
+        title: `Rewire_Backup_${formattedDate}.json`,
       });
-      
+
       if (result.action === Share.sharedAction) {
-        Alert.alert('Export Successful', 'Your encrypted local profile history has been successfully exported.');
+        Alert.alert('Export Successful', 'Your local profile history has been exported as JSON.');
       }
-    } catch (error) {
-      Alert.alert('Export Aborted', 'An unexpected exception occurred while assembling local data matrices.');
+    } catch {
+      Alert.alert('Export Aborted', 'An unexpected exception occurred while assembling local data.');
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleImportData = async () => {
-    // Structural verification check warning before destructive overwrite execution
+    if (!importText.trim()) {
+      Alert.alert('Paste Backup JSON', 'Paste a backup JSON payload into the restore field first.');
+      return;
+    }
+
     Alert.alert(
       'Overwrite Database?',
-      'Importing an external data snapshot will permanently replace your current local streaks, budgets, and historical craving logs. This action cannot be undone.',
+      'Importing this snapshot will replace your current local streaks, budgets, cravings, and relapse logs.',
       [
-        { text: 'Abort Lockout', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Proceed Overwrite', 
+          text: 'Restore', 
           style: 'destructive',
           onPress: async () => {
             setIsImporting(true);
             try {
-              // Simulated raw backup intake payload structure for validation checks
-              const mockIncomingJSON = {
-                version: "1.0.0",
-                exported_at: new Date().toISOString(),
-                user_matrix: { currency: "USD", daily_budget_weed: 15.00, daily_budget_nicotine: 8.50 },
-                streaks: [],
-                craving_logs: [],
-                relapse_logs: []
-              };
-
-              // Validate layout and integrity constraints before feeding data to storage engine
-              if (!mockIncomingJSON.user_matrix || !mockIncomingJSON.version) {
-                throw new Error("Invalid schema structure profile matched.");
-              }
-
-              const success = await onRestoreLocalBackupPayload(mockIncomingJSON);
+              const parsed = JSON.parse(importText);
+              const success = await onRestoreLocalBackupPayload(parsed);
               if (success) {
-                Alert.alert('Database Sync Restored', 'Your data payload has been parsed and integrated successfully into your local device sandbox.');
+                setImportText('');
+                Alert.alert('Restore Complete', 'Your local app data has been replaced with the imported backup.');
+              } else {
+                Alert.alert('Import Failed', 'The pasted JSON does not match the Rewire backup schema.');
               }
-            } catch (err) {
-              Alert.alert('Import Failed', 'The selected document is corrupted or does not conform to the required application schema parameters.');
+            } catch {
+              Alert.alert('Import Failed', 'The pasted text is not valid JSON.');
             } finally {
               setIsImporting(false);
             }
@@ -85,11 +78,10 @@ export default function DataBackup({ onFetchLocalBackupPayload, onRestoreLocalBa
       
       <View style={styles.backupCard}>
         <Text style={styles.explainerText}>
-          Manage your independent database files manually. Since we maintain absolute, account-free anonymity, you are the exclusive owner of your recovery data[cite: 20].
+          Manage your independent recovery data manually. The demo exports the current local state as JSON and restores from pasted backup JSON.
         </Text>
 
         <View style={styles.buttonStackRow}>
-          {/* Export Action Controller */}
           <TouchableOpacity 
             style={[styles.utilityButton, styles.exportColorVariant]} 
             onPress={handleExportData}
@@ -101,7 +93,6 @@ export default function DataBackup({ onFetchLocalBackupPayload, onRestoreLocalBa
             </Text>
           </TouchableOpacity>
 
-          {/* Import Action Controller */}
           <TouchableOpacity 
             style={[styles.utilityButton, styles.importColorVariant]} 
             onPress={handleImportData}
@@ -113,6 +104,26 @@ export default function DataBackup({ onFetchLocalBackupPayload, onRestoreLocalBa
             </Text>
           </TouchableOpacity>
         </View>
+
+        {lastExport ? (
+          <View style={styles.previewBox}>
+            <Text style={styles.previewLabel}>Latest Export Preview</Text>
+            <Text style={styles.previewText} numberOfLines={5}>{lastExport}</Text>
+          </View>
+        ) : null}
+
+        <TextInput
+          style={styles.importInput}
+          value={importText}
+          onChangeText={setImportText}
+          multiline
+          placeholder="Paste Rewire backup JSON here"
+          placeholderTextColor="#636366"
+        />
+
+        <TouchableOpacity style={styles.resetButton} onPress={onResetDemoData} activeOpacity={0.75}>
+          <Text style={styles.resetButtonText}>Reset Local Demo Data</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -124,7 +135,7 @@ const styles = StyleSheet.create({
   container: {
     width: width - 40,
     marginTop: 28,
-    marginBottom: 120, // Clean margin buffer spacing to prevent nav-pill occlusion layout bugs [cite: 15, 319]
+    marginBottom: 120,
     alignSelf: 'center',
   },
   sectionTitle: {
@@ -135,7 +146,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   backupCard: {
-    backgroundColor: '#1C1C1E', // iOS surface platform container card asset styling rules
+    backgroundColor: '#1C1C1E',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
@@ -165,7 +176,7 @@ const styles = StyleSheet.create({
     borderColor: '#3A3A3C',
   },
   importColorVariant: {
-    backgroundColor: 'rgba(255, 59, 48, 0.15)', // Muted alpha-channeled Warning Crimson layout warning [cite: 184]
+    backgroundColor: 'rgba(255, 59, 48, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(255, 59, 48, 0.3)',
   },
@@ -174,5 +185,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.1,
+  },
+  previewBox: {
+    backgroundColor: '#111214',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    padding: 12,
+    marginTop: 14,
+  },
+  previewLabel: {
+    color: '#8E8E93',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  previewText: {
+    color: '#AEAEB2',
+    fontSize: 11,
+    lineHeight: 16,
+    fontFamily: 'Courier',
+  },
+  importInput: {
+    minHeight: 92,
+    backgroundColor: '#111214',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    color: '#FFFFFF',
+    padding: 12,
+    marginTop: 14,
+    textAlignVertical: 'top',
+    fontSize: 12,
+  },
+  resetButton: {
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  resetButtonText: {
+    color: '#AEAEB2',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

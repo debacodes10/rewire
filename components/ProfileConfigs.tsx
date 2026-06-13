@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TextInput, Dimensions, TouchableOpacity, Keyboard } from 'react-native';
 
 // Supported currency formats for localization mapping
@@ -28,6 +28,18 @@ export default function ProfileConfigs({
   const [nicotineBudget, setNicotineBudget] = useState(initialNicotineBudget);
   const [currency, setCurrency] = useState<CurrencyCode>(initialCurrency);
   const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    setWeedBudget(initialWeedBudget);
+  }, [initialWeedBudget]);
+
+  useEffect(() => {
+    setNicotineBudget(initialNicotineBudget);
+  }, [initialNicotineBudget]);
+
+  useEffect(() => {
+    setCurrency(initialCurrency);
+  }, [initialCurrency]);
 
   const handleSave = () => {
     Keyboard.dismiss();

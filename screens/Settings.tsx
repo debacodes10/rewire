@@ -1,34 +1,56 @@
 import React from 'react';
-import { StyleSheet, Text, ScrollView, Dimensions, View } from 'react-native';
+import { Alert, StyleSheet, Text, ScrollView, Dimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ProfileConfigs from '../components/ProfileConfigs';
 import PrivacySecurity from '../components/PrivacySecurity';
-import DataBackup from '../components/DataBackup'; // New Import
+import DataBackup from '../components/DataBackup';
+import { CurrencyCode, useAppState } from '../state/AppState';
+import { authenticateForAppUnlock, getLocalAuthLabel } from '../services/localAuth';
 
 export default function Settings() {
-  const handleConfigSync = (weed: number, nicotine: number, currency: string) => {
-    console.log(`Zustand Sync -> Budget Weed: $${weed}, Budget Nicotine: $${nicotine}, Currency Token: ${currency}`);
-  };
+  const { data, updateFinancialSettings, updatePrivacySettings, exportBackup, restoreBackup, resetDemoData } = useAppState();
 
   const handleBiometricAuthExchange = async (isEnabled: boolean): Promise<boolean> => {
-    return new Promise((resolve) => setTimeout(() => resolve(true), 600));
+    if (!isEnabled) {
+      updatePrivacySettings({ biometricsEnabled: false });
+      return true;
+    }
+
+    const result = await authenticateForAppUnlock('Enable Rewire app lock');
+
+    if (!result.success) {
+      const authLabel = getLocalAuthLabel(result.biometryType);
+      Alert.alert(
+        'Could not enable app lock',
+        result.error || `Rewire could not verify ${authLabel}. Check your device settings and try again.`,
+      );
+      return false;
+    }
+
+    updatePrivacySettings({ biometricsEnabled: isEnabled });
+    return true;
   };
 
-  // Mock hooks preparing for direct mapping to our Zustand local store queries
   const handleCompileBackupData = async (): Promise<object> => {
     return {
-      version: "1.0.0",
+      ...exportBackup(),
       exported_at: new Date().toISOString(),
-      user_matrix: { currency: "USD", daily_budget_weed: 15.00, daily_budget_nicotine: 8.50 },
-      streaks: [{ substance: "weed", duration_seconds: 432000 }],
-      craving_logs: [],
-      relapse_logs: []
     };
   };
 
   const handleRestoreBackupData = async (parsedData: object): Promise<boolean> => {
-    console.log("Injecting validated payload directly into MMKV cell arrays...", parsedData);
-    return true;
+    return restoreBackup(parsedData);
+  };
+
+  const handleResetDemo = () => {
+    Alert.alert(
+      'Reset local demo?',
+      'This clears onboarding, settings, cravings, and relapse logs in the current local store.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: resetDemoData },
+      ],
+    );
   };
 
   return (
@@ -43,15 +65,24 @@ export default function Settings() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Component 1: Financial Run-Rate Profiles */}
-        <ProfileConfigs onSaveConfigurations={handleConfigSync} />
-        
-        {/* Component 2: Hardware Biometric Locker Toggle */}
-        <PrivacySecurity onToggleBiometrics={handleBiometricAuthExchange} />
+        <ProfileConfigs
+          initialWeedBudget={String(data.settings.weedDailyBudget)}
+          initialNicotineBudget={String(data.settings.nicotineDailyBudget)}
+          initialCurrency={data.settings.currency}
+          onSaveConfigurations={(weed, nicotine, currency: CurrencyCode) => updateFinancialSettings(weed, nicotine, currency)}
+        />
 
-        {/* Component 3: Data Backup & JSON Portability Utility */}
+        <PrivacySecurity
+          initialBiometricState={data.settings.biometricsEnabled}
+          initialMaskState={data.settings.maskInSwitcher}
+          onToggleBiometrics={handleBiometricAuthExchange}
+          onToggleMask={isEnabled => updatePrivacySettings({ maskInSwitcher: isEnabled })}
+        />
+
         <DataBackup 
           onFetchLocalBackupPayload={handleCompileBackupData}
           onRestoreLocalBackupPayload={handleRestoreBackupData}
+          onResetDemoData={handleResetDemo}
         />
       </ScrollView>
     </SafeAreaView>
@@ -83,6 +114,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   scrollContent: {
-    paddingBottom: 40, // Reset tight bounds since container child spacing handles floating offset clearances [cite: 15]
+    paddingBottom: 40,
   },
 });

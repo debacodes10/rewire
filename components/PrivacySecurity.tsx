@@ -1,34 +1,49 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Switch, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Switch, Dimensions } from 'react-native';
 
 interface PrivacySecurityProps {
   initialBiometricState?: boolean;
+  initialMaskState?: boolean;
   onToggleBiometrics: (isEnabled: boolean) => Promise<boolean>;
+  onToggleMask: (isEnabled: boolean) => void;
 }
 
 export default function PrivacySecurity({ 
   initialBiometricState = false,
-  onToggleBiometrics 
+  initialMaskState = true,
+  onToggleBiometrics,
+  onToggleMask,
 }: PrivacySecurityProps) {
   const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(initialBiometricState);
-  const [isDataMasked, setIsDataMasked] = useState(true);
+  const [isDataMasked, setIsDataMasked] = useState(initialMaskState);
+  const [authStatus, setAuthStatus] = useState<string | undefined>();
+
+  useEffect(() => {
+    setIsBiometricsEnabled(initialBiometricState);
+  }, [initialBiometricState]);
+
+  useEffect(() => {
+    setIsDataMasked(initialMaskState);
+  }, [initialMaskState]);
 
   const handleBiometricToggle = async (newValue: boolean) => {
-    // Optimistically update the UI track state
+    setAuthStatus(undefined);
     setIsBiometricsEnabled(newValue);
     
-    // Dispatch call out to device OS scanner framework logic
     const success = await onToggleBiometrics(newValue);
     
     if (!success) {
-      // Revert track state if authorization handshake fails or is canceled
       setIsBiometricsEnabled(!newValue);
-      Alert.alert(
-        'Authentication Error',
-        'Could not verify biometric credentials. Please ensure FaceID/TouchID is enabled in your device system settings.',
-        [{ text: 'Acknowledge' }]
-      );
+      setAuthStatus('App lock was not enabled. Verify your device credentials and try again.');
+      return;
     }
+
+    setAuthStatus(newValue ? 'App lock is enabled for the next launch.' : 'App lock is disabled.');
+  };
+
+  const handleMaskToggle = (newValue: boolean) => {
+    setIsDataMasked(newValue);
+    onToggleMask(newValue);
   };
 
   return (
@@ -50,6 +65,7 @@ export default function PrivacySecurity({
             value={isBiometricsEnabled}
           />
         </View>
+        {authStatus && <Text style={styles.statusText}>{authStatus}</Text>}
 
         <View style={styles.divider} />
 
@@ -63,7 +79,7 @@ export default function PrivacySecurity({
             trackColor={{ false: '#3A3A3C', true: '#007AFF' }}
             thumbColor="#FFFFFF"
             ios_backgroundColor="#3A3A3C"
-            onValueChange={setIsDataMasked}
+            onValueChange={handleMaskToggle}
             value={isDataMasked}
           />
         </View>
@@ -72,7 +88,7 @@ export default function PrivacySecurity({
       {/* Local Encryption Disclaimer Banner */}
       <View style={styles.securityBanner}>
         <Text style={styles.bannerText}>
-          🔒 Hardware Sandboxed: Your choices are stored directly inside the device's secure keychain element. Your data is encrypted locally and is completely inaccessible to third parties or remote analytics engines.
+          🔒 Local-first: Your settings and recovery logs stay inside the local app data layer. No remote account, analytics pipeline, or API sync is required for this demo flow.
         </Text>
       </View>
     </View>
@@ -127,6 +143,12 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#2C2C2E',
     width: '100%',
+  },
+  statusText: {
+    color: '#8E8E93',
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 10,
   },
   securityBanner: {
     backgroundColor: '#111214',
